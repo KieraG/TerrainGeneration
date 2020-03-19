@@ -1,21 +1,41 @@
 #include "Terrain.h"
 
+#include <SDL_image.h>
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 #include <time.h>
+
 #include <glm/gtx/normal.hpp>
-#include <algorithm>
 
 #include "Engine/Engine.hpp"
 #include "Engine/OpenGL.hpp"
 
 Terrain::Terrain() {
-    scaleX = 1.0f;
-    scaleY = 1.0f;
-    scaleZ = 1.0f;
+    scaleX    = 1.0f;
+    scaleY    = 1.0f;
+    scaleZ    = 1.0f;
+    TextureID = 0;
 }
 
 void Terrain::createTriangles() {
+
+    SDL_Surface *Surface = IMG_Load("terrain.png");
+    glGenTextures(1, &TextureID);
+    glBindTexture(GL_TEXTURE_2D, TextureID);
+
+    int Mode = GL_RGB;
+    if (Surface->format->BitsPerPixel == 4) {
+        Mode = GL_RGBA;
+    }
+
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexEnvf(GL_TEXTURE_ENV, GL_TEXTURE_ENV_MODE, GL_MODULATE);
+    glTexImage2D(GL_TEXTURE_2D, 0, Mode, Surface->w, Surface->h, 0, Mode,
+                 GL_UNSIGNED_BYTE, Surface->pixels);
 
     for (size_t z = 0; z < terrainData.size() - 1; z++) {
         for (size_t x = 0; x < terrainData.size() - 1; x++) {
@@ -44,6 +64,75 @@ void Terrain::createTriangles() {
             terrainTri.push_back(right);
         }
     }
+}
+
+void Terrain::render(bool wireframe) {
+
+    int count = 0;
+
+    for (auto tri : terrainTri) {
+        glBindTexture(GL_TEXTURE_2D, TextureID);
+        if (!wireframe) {
+            glBegin(GL_TRIANGLES);
+        } else {
+            glBegin(GL_LINE_LOOP);
+        }
+
+        auto normal = -glm::triangleNormal(tri.first, tri.second, tri.third);
+        glNormal3f(normal.x, normal.y, normal.z);
+
+        // calculate the texture coordinates
+        if (count % 2 != 0) {
+            glTexCoord2f(0, 0);
+            glVertex3f(tri.first.x, tri.first.y, tri.first.z);
+            glTexCoord2f(1, 0);
+            glVertex3f(tri.second.x, tri.second.y, tri.second.z);
+            glTexCoord2f(0, 1);
+            glVertex3f(tri.third.x, tri.third.y, tri.third.z);
+        } else {
+            glTexCoord2f(1, 0);
+            glVertex3f(tri.first.x, tri.first.y, tri.first.z);
+            glTexCoord2f(0, 1);
+            glVertex3f(tri.second.x, tri.second.y, tri.second.z);
+            glTexCoord2f(0, 1);
+            glVertex3f(tri.third.x, tri.third.y, tri.third.z);
+        }
+
+        count++;
+        glEnd();
+        glBindTexture(GL_TEXTURE_2D, 0);
+    }
+
+    // for (size_t z = 0; z < terrainData.size() - 1; z++) {
+    //    for (size_t x = 0; x < terrainData.size() - 1; x++) {
+
+    //        if (!wireframe) {
+    //            glBegin(GL_TRIANGLES);
+    //        } else {
+    //            glBegin(GL_LINE_LOOP);
+    //        }
+    //        glVertex3f((x * scaleX), terrainData[x][z] * scaleY, (z)*scaleZ);
+    //        glVertex3f((x + 1) * scaleX, terrainData.at(x + 1).at(z) * scaleY,
+    //                   (z)*scaleZ);
+    //        glVertex3f((x + 1) * scaleX, terrainData.at(x + 1).at(z + 1) * scaleY,
+    //                   (z + 1) * scaleZ);
+
+    //        glEnd();
+
+    //        if (!wireframe) {
+    //            glBegin(GL_TRIANGLES);
+    //        } else {
+    //            glBegin(GL_LINE_LOOP);
+    //        }
+    //        glVertex3f((x)*scaleX, terrainData.at(x).at(z) * scaleY, (z)*scaleZ);
+    //        glVertex3f((x + 1) * scaleX, terrainData.at(x + 1).at(z + 1) * scaleY,
+    //                   (z + 1) * scaleZ);
+    //        glVertex3f((x)*scaleX, terrainData.at(x).at(z + 1) * scaleY,
+    //                   (z + 1) * scaleZ);
+
+    //        glEnd();
+    //    }
+    //}
 }
 
 bool Terrain::loadHeightfield(const std::string filename, const int size) {
@@ -91,55 +180,7 @@ void Terrain::readTerrainData() {
     }
 }
 
-void Terrain::render(bool wireframe) {
 
-    for (auto tri : terrainTri) {
-        if (!wireframe) {
-            glBegin(GL_TRIANGLES);
-        } else {
-            glBegin(GL_LINE_LOOP);
-        }
-        auto normal = -glm::triangleNormal(tri.first, tri.second, tri.third);
-        glNormal3f(normal.x, normal.y, normal.z);
-
-        glVertex3f(tri.first.x, tri.first.y, tri.first.z);
-        glVertex3f(tri.second.x, tri.second.y, tri.second.z);
-        glVertex3f(tri.third.x, tri.third.y, tri.third.z);
-
-        glEnd();
-    }
-
-    // for (size_t z = 0; z < terrainData.size() - 1; z++) {
-    //    for (size_t x = 0; x < terrainData.size() - 1; x++) {
-
-    //        if (!wireframe) {
-    //            glBegin(GL_TRIANGLES);
-    //        } else {
-    //            glBegin(GL_LINE_LOOP);
-    //        }
-    //        glVertex3f((x * scaleX), terrainData[x][z] * scaleY, (z)*scaleZ);
-    //        glVertex3f((x + 1) * scaleX, terrainData.at(x + 1).at(z) * scaleY,
-    //                   (z)*scaleZ);
-    //        glVertex3f((x + 1) * scaleX, terrainData.at(x + 1).at(z + 1) * scaleY,
-    //                   (z + 1) * scaleZ);
-
-    //        glEnd();
-
-    //        if (!wireframe) {
-    //            glBegin(GL_TRIANGLES);
-    //        } else {
-    //            glBegin(GL_LINE_LOOP);
-    //        }
-    //        glVertex3f((x)*scaleX, terrainData.at(x).at(z) * scaleY, (z)*scaleZ);
-    //        glVertex3f((x + 1) * scaleX, terrainData.at(x + 1).at(z + 1) * scaleY,
-    //                   (z + 1) * scaleZ);
-    //        glVertex3f((x)*scaleX, terrainData.at(x).at(z + 1) * scaleY,
-    //                   (z + 1) * scaleZ);
-
-    //        glEnd();
-    //    }
-    //}
-}
 
 void Terrain::filterPass(float *dataP, int increment, float weight) {
     float yprev = *dataP;    // the starting point in the terrain array
@@ -198,7 +239,8 @@ void Terrain::normaliseTerrain(float *heights) {
 }
 
 bool Terrain::genFaultFormation(int iterations, int hSize, int minHeight,
-                                int maxHeight, float weight,int postSmoothingIterations, bool random) {
+                                int maxHeight, float weight,
+                                int postSmoothingIterations, bool random) {
     int x1, x2, z1, z2;
     float *heights = nullptr;
     int displacement;

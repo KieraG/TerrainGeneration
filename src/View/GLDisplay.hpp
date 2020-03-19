@@ -20,6 +20,7 @@ namespace View {
 
 
       public:
+        bool firstRun = 1;
         GLDisplay();
         static auto get() -> GLDisplay &;
         auto display() -> void;

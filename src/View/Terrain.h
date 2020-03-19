@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <glm/vec3.hpp>
+#include "Engine/OpenGL.hpp"
 class Terrain {
 
   public:
@@ -24,7 +25,9 @@ class Terrain {
     void flatTerrain(int size);
     void filterPass(float *dataP, int increment, float weight);
     void addFilter(float *terrainData, float weight);
-    void Terrain::normaliseTerrain(float *terrainData);
+    void normaliseTerrain(float *terrainData);
+
+    GLuint TextureID;
 
   private:
     int imageSize = 0;
